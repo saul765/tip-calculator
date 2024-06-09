@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">TipCalulator</string>
+    <string name="calculatorPersonsLabel">Total Per Person</string>
+    <string name="calculatorTotalLabel">$%1$s</string>
+    <string name="calculatorBillLabel">Enter Bill</string>
+    <string name="calculatorCurrencySymbol">$</string>
+    <string name="calculatorSplitLabel">Split</string>
+    <string name="calculatorTipLabel">Tip</string>
+    <string name="calculatorTipTotalLabel">$%1$s</string>
+    <string name="calculatorTipPercentageLabel">%1$d %%</string>
+    <string name="calculatorRoundedIconDescription">Plus or Minus</string>
+
+
+</resources>
