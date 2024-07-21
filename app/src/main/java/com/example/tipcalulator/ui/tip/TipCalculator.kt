@@ -19,10 +19,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -35,29 +32,27 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.tipcalulator.EMPTY_CHARACTER
 import com.example.tipcalulator.R
 import com.example.tipcalulator.ui.base.InputField
 import com.example.tipcalulator.ui.base.RoundIconButton
+import com.example.tipcalulator.ui.base.TipCalculatorState
 import com.example.tipcalulator.ui.theme.Purple80
 import com.example.tipcalulator.ui.theme.TipCalulatorTheme
 import com.example.tipcalulator.utils.CalculationUtils.calculateAbsolutePercentage
-import com.example.tipcalulator.utils.CalculationUtils.calculateTipAmount
-import com.example.tipcalulator.utils.CalculationUtils.calculateTotalPerPerson
 import com.example.tipcalulator.utils.CalculationUtils.formatTwoDecimals
 
-const val DEFAULT_TOTAL_PER_PERSON = 0.0
-const val DEFAULT_PERSONS = 1
+
 const val DEFAULT_TIP_PERCENTAGE = 0.0
 const val DEFAULT_SLIDER_POSITION = 0f
-const val DEFAULT_TIP_AMOUNT = 0.0
+
+@Composable
+fun rememberTipCalculatorState(): TipCalculatorState =
+    remember { TipCalculatorState() }
+
 
 @Composable
 fun TipCalculator(modifier: Modifier = Modifier) {
-    var billAmount by remember { mutableStateOf(EMPTY_CHARACTER) }
-    var persons by remember { mutableIntStateOf(DEFAULT_PERSONS) }
-    var totalPerPerson by remember { mutableDoubleStateOf(DEFAULT_TOTAL_PER_PERSON) }
-    var tipAmount by remember { mutableDoubleStateOf(DEFAULT_TIP_PERCENTAGE) }
+    val state = rememberTipCalculatorState()
 
     Surface(modifier = modifier.fillMaxSize(), color = Color.White) {
         Column(
@@ -66,35 +61,11 @@ fun TipCalculator(modifier: Modifier = Modifier) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             TotalAmount(
-                amount = totalPerPerson
+                amount = state.calculateTotalPerPerson()
             )
             Calculator(
-                billAmount = billAmount,
-                totalPersons = persons,
-                onIncrementClicked = {
-                    persons++
-                },
-                onDecreaseClicked = {
-                    if (persons > 1) {
-                        persons--
-                    }
-                },
-                billInputListener = {
-                    billAmount = it
-                    totalPerPerson = calculateTotalPerPerson(
-                        billAmount,
-                        tipAmount,
-                        persons
-                    )
-                },
-                tipAmountListener = {
-                    tipAmount = it
-                    totalPerPerson = calculateTotalPerPerson(
-                        billAmount,
-                        it,
-                        persons
-                    )
-                })
+                calculatorState = state,
+            )
         }
     }
 }
@@ -102,11 +73,7 @@ fun TipCalculator(modifier: Modifier = Modifier) {
 
 @Composable
 private fun Calculator(
-    billAmount: String,
-    totalPersons: Int, onIncrementClicked: () -> Unit = {},
-    onDecreaseClicked: () -> Unit = {},
-    billInputListener: (String) -> Unit = {},
-    tipAmountListener: (Double) -> Unit = {}
+    calculatorState: TipCalculatorState,
 ) {
     Card(
         modifier = Modifier
@@ -122,13 +89,29 @@ private fun Calculator(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.Start
         ) {
-            BillInputField(valueChangeListener = billInputListener, initialValue = billAmount)
-            SplitSection(
-                totalPersons = totalPersons,
-                onIncrementClicked = onIncrementClicked,
-                onDecreaseClicked = onDecreaseClicked
+            BillInputField(
+                valueChangeListener = {
+                    calculatorState.updateBillAmount(it)
+                },
+                initialValue = calculatorState.billAmount
             )
-            TipSection(totalAmount = billAmount, tipAmountListener = tipAmountListener)
+            SplitSection(
+                totalPersons = calculatorState.persons,
+                onIncrementClicked = {
+                    calculatorState.updatePersons(calculatorState.persons + 1)
+                },
+                onDecreaseClicked = {
+                    if (calculatorState.persons > 1) {
+                        calculatorState.updatePersons(calculatorState.persons - 1)
+                    }
+                }
+            )
+            TipSection(
+                tipAmount = calculatorState.tipAmount,
+                tipPercentageListener = {
+                    calculatorState.updateTipAmount(it)
+                }
+            )
         }
     }
 }
@@ -153,10 +136,11 @@ fun SplitSection(
 }
 
 @Composable
-fun TipSection(totalAmount: String = EMPTY_CHARACTER, tipAmountListener: (Double) -> Unit = {}) {
+fun TipSection(
+    tipAmount: Double = DEFAULT_TIP_PERCENTAGE,
+    tipPercentageListener: (Float) -> Unit = {}
+) {
     var sliderPosition by remember { mutableFloatStateOf(DEFAULT_SLIDER_POSITION) }
-
-    var tipAmount by remember { mutableDoubleStateOf(DEFAULT_TIP_AMOUNT) }
 
     Column(
         verticalArrangement = Arrangement.Center,
@@ -172,7 +156,7 @@ fun TipSection(totalAmount: String = EMPTY_CHARACTER, tipAmountListener: (Double
                 modifier = Modifier.padding(end = 50.dp),
                 text = stringResource(
                     id = R.string.calculatorTipTotalLabel,
-                    tipAmount
+                    tipAmount.formatTwoDecimals()
                 )
             )
         }
@@ -185,11 +169,7 @@ fun TipSection(totalAmount: String = EMPTY_CHARACTER, tipAmountListener: (Double
         Slider(
             onValueChange = {
                 sliderPosition = it
-                tipAmount = calculateTipAmount(
-                    totalAmount.toDoubleOrNull() ?: 0.00,
-                    it
-                )
-                tipAmountListener(tipAmount)
+                tipPercentageListener(it)
             },
             value = sliderPosition,
             steps = 100
@@ -288,8 +268,9 @@ fun TipCalculatorPreview() {
 @Preview(showBackground = true)
 @Composable
 fun CalculatorPreview() {
+    val state = rememberTipCalculatorState()
     TipCalulatorTheme {
-        Calculator(billAmount = "100", 5)
+        Calculator(calculatorState = state)
     }
 }
 
