@@ -49,10 +49,9 @@ const val DEFAULT_SLIDER_POSITION = 0f
 fun rememberTipCalculatorState(): TipCalculatorState =
     remember { TipCalculatorState() }
 
-
 @Composable
 fun TipCalculator(modifier: Modifier = Modifier) {
-    val state = rememberTipCalculatorState()
+    val calculatorState = rememberTipCalculatorState()
 
     Surface(modifier = modifier.fillMaxSize(), color = Color.White) {
         Column(
@@ -61,10 +60,13 @@ fun TipCalculator(modifier: Modifier = Modifier) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             TotalAmount(
-                amount = state.calculateTotalPerPerson()
+                amount = calculatorState.calculateTotalPerPerson()
             )
             Calculator(
-                calculatorState = state,
+                calculatorState = calculatorState,
+                onBillInputChange = { calculatorState.updateBillAmount(it) },
+                onPersonsChanged = { calculatorState.updatePersons(it) },
+                onTipChanged = { calculatorState.updateTipAmount(it) }
             )
         }
     }
@@ -74,6 +76,10 @@ fun TipCalculator(modifier: Modifier = Modifier) {
 @Composable
 private fun Calculator(
     calculatorState: TipCalculatorState,
+    onBillInputChange: (String) -> Unit = {},
+    onPersonsChanged: (Int) -> Unit = {},
+    onTipChanged: (Float) -> Unit = {}
+
 ) {
     Card(
         modifier = Modifier
@@ -90,27 +96,24 @@ private fun Calculator(
             horizontalAlignment = Alignment.Start
         ) {
             BillInputField(
-                valueChangeListener = {
-                    calculatorState.updateBillAmount(it)
-                },
+                valueChangeListener = { onBillInputChange(it) },
                 initialValue = calculatorState.billAmount
             )
             SplitSection(
                 totalPersons = calculatorState.persons,
                 onIncrementClicked = {
-                    calculatorState.updatePersons(calculatorState.persons + 1)
+                    onPersonsChanged(calculatorState.persons + 1)
                 },
                 onDecreaseClicked = {
                     if (calculatorState.persons > 1) {
-                        calculatorState.updatePersons(calculatorState.persons - 1)
+                        onPersonsChanged(calculatorState.persons - 1)
                     }
                 }
             )
             TipSection(
                 tipAmount = calculatorState.tipAmount,
-                tipPercentageListener = {
-                    calculatorState.updateTipAmount(it)
-                }
+                tipPercentageListener = { onTipChanged(it) }
+
             )
         }
     }
